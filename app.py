@@ -11,9 +11,16 @@ app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
 def get_formats(video_info):
-    """Helper function to extract and sort formats for a single video."""
+    """
+    Helper function to extract and sort formats, prioritizing 
+    progressive (single file) downloads and filtering out manifests.
+    """
     formats = []
     for f in video_info.get('formats', []):
+        # Exclude manifest-only formats that result in .m3u8 files
+        if f.get('protocol') in ('m3u8_native', 'http_dash_segments'):
+            continue
+
         is_video = f.get('vcodec') != 'none' and f.get('acodec') != 'none'
         is_audio = f.get('vcodec') == 'none' and f.get('acodec') != 'none'
 
@@ -103,7 +110,12 @@ def download():
                 return render_template('download.html', video=video_info)
 
     except yt_dlp.utils.DownloadError as e:
-        return render_template('index.html', error=f"Could not process URL. Please check if it's correct. Error: {e}")
+        error_str = str(e)
+        if 'Sign in to confirm' in error_str or 'nsig extraction' in error_str:
+            error_message = "This video is protected and requires authentication. Please use the 'Upload cookies.txt' option to proceed. See the instructions on the homepage for details."
+        else:
+            error_message = f"Could not process URL. Please check if it's correct. Error: {error_str}"
+        return render_template('index.html', error=error_message)
     except Exception as e:
         return render_template('index.html', error=f"An unexpected error occurred: {e}")
 
