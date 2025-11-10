@@ -1,0 +1,28 @@
+
+{
+  "name": "YouTube Downloader Web",
+  "description": "A simple web application to download YouTube videos and audio, built with Flask and yt-dlp.",
+  "repository": "https://github.com/YOUR_USERNAME/YTDOWNLOADERWEB",
+  "logo": "https://raw.githubusercontent.com/yt-dlp/yt-dlp/master/support/logos/yt-dlp-logo.svg",
+  "keywords": ["python", "flask", "youtube", "downloader", "yt-dlp"],
+  "buildpacks": [
+    {
+      "url": "heroku-community/ffmpeg"
+    },
+    {
+      "url": "heroku/python"
+    }
+  ],
+  "env": {
+    "FLASK_APP": {
+      "description": "The main Flask application file.",
+      "value": "app.py"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "free"
+    }
+  }
+}

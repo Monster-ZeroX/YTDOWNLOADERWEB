@@ -66,45 +66,11 @@ To run this application on your local machine, follow these steps.
 
 ## Deployment to Heroku
 
-This application is ready to be deployed to Heroku.
+Once you have pushed this repository to your own GitHub account, you can deploy it to Heroku by clicking the button below.
 
-### Prerequisites
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/YOUR_USERNAME/YTDOWNLOADERWEB)
 
--   A free Heroku account.
--   The [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) installed.
--   [Git](https://git-scm.com/downloads) installed.
-
-### Steps
-
-1.  **Log in to Heroku from your terminal:**
-    ```bash
-    heroku login
-    ```
-
-2.  **Navigate to the project directory and create a new Heroku app:**
-    ```bash
-    cd YTDOWNLOADERWEB
-    heroku create your-unique-app-name
-    ```
-    If you omit a name, Heroku will generate a random one.
-
-3.  **Add a non-Python buildpack for FFmpeg (optional but recommended):**
-    `yt-dlp` sometimes relies on FFmpeg for processing certain formats. Adding this buildpack prevents potential issues.
-    ```bash
-    heroku buildpacks:add --index 1 heroku-community/ffmpeg
-    ```
-
-4.  **Push your code to Heroku:**
-    This command will push the `main` branch of your repository to the `heroku` remote, which will trigger a build and deployment.
-    ```bash
-    git push heroku main
-    ```
-
-5.  **Open your application:**
-    ```bash
-    heroku open
-    ```
-    Your YouTube Downloader website is now live!
+**Note:** Remember to replace `YOUR_USERNAME` in the button's link within the `README.md` file with your actual GitHub username for the button to work correctly from your repository. The `app.json` file will handle the rest of the setup automatically.
 
 ---
 
