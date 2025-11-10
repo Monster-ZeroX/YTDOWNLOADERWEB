@@ -1,3 +1,4 @@
+
 import yt_dlp
 from flask import Flask, render_template, request, redirect, session
 import os
@@ -9,51 +10,9 @@ app = Flask(__name__)
 # In a real production app, this should be loaded from an environment variable
 app.secret_key = secrets.token_hex(16)
 
-def get_formats(video_info):
-    """
-    Helper function to extract and sort formats, including their direct download URLs.
-    """
-    formats = []
-    for f in video_info.get('formats', []):
-        # Only include formats that have a direct URL
-        if not f.get('url'):
-            continue
-
-        is_video = f.get('vcodec', 'none') != 'none' and f.get('acodec', 'none') != 'none'
-        is_audio = f.get('vcodec', 'none') == 'none' and f.get('acodec', 'none') != 'none'
-
-        if is_video:
-            resolution = f.get('format_note') or f.get('height')
-            if resolution:
-                formats.append({
-                    'format_id': f['format_id'],
-                    'ext': f['ext'],
-                    'note': f"{resolution}p, {f['ext']}",
-                    'type': 'Video',
-                    'url': f['url'] # Include the direct URL
-                })
-        elif is_audio:
-            formats.append({
-                'format_id': f['format_id'],
-                'ext': f['ext'],
-                'note': f"Audio, ~{f.get('abr', 0)}kbps, {f['ext']}",
-                'type': 'Audio',
-                'url': f['url'] # Include the direct URL
-            })
-
-    unique_formats = []
-    seen_notes = set()
-    # Sort by type (Video first) and then by resolution (higher first)
-    for f in sorted(formats, key=lambda x: (x['type'], -int(re.search(r'(\d+)', x['note']).group(1)) if 'p' in x['note'] else 0), reverse=True):
-        if f['note'] not in seen_notes:
-            unique_formats.append(f)
-            seen_notes.add(f['note'])
-    
-    return unique_formats
-
 @app.route('/')
 def index():
-    """Renders the main page and clears any old cookie file paths."""
+    """Renders the main page and clears any old session data."""
     if 'cookie_file_path' in session:
         if os.path.exists(session['cookie_file_path']):
             os.remove(session['cookie_file_path'])
@@ -63,25 +22,27 @@ def index():
 @app.route('/download', methods=['POST'])
 def download():
     """
-    Fetches video/playlist info, saving cookie file path in session.
+    Uses yt-dlp to extract a single, best-quality, direct-downloadable link.
     """
     url = request.form['url']
     if not url:
         return redirect('/')
 
     cookie_file = request.files.get('cookie_file')
-    download_playlist = request.form.get('download_playlist') == 'yes'
     
+    # Clean up any old cookie file from a previous session
     if 'cookie_file_path' in session and os.path.exists(session['cookie_file_path']):
         os.remove(session['cookie_file_path'])
     session.pop('cookie_file_path', None)
 
     try:
+        # This format string is the key. It tells yt-dlp to find the best format
+        # that has both video and audio, is not a manifest file, and prefers mp4.
+        # It will automatically select the best single file for download.
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'noplaylist': not download_playlist,
-            'format_sort': ['res', 'ext', 'vcodec'], # Prioritize resolution, then extension, then video codec
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         }
 
         if cookie_file and cookie_file.filename:
@@ -90,24 +51,22 @@ def download():
             session['cookie_file_path'] = path
             ydl_opts['cookiefile'] = path
 
+        # We only need to extract the info once. yt-dlp will process the format
+        # selector and provide the direct URL for the chosen format.
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
-            if 'entries' in info and info['entries']:
-                for entry in info['entries']:
-                    if entry:
-                        entry['formats'] = get_formats(entry)
-                        entry['original_url'] = entry.get('webpage_url')
-                return render_template('download.html', video=info)
-            else:
-                unique_formats = get_formats(info)
-                video_info = {
-                    'title': info.get('title', 'No title'),
-                    'thumbnail': info.get('thumbnail', ''),
-                    'formats': unique_formats,
-                    'original_url': info.get('webpage_url')
-                }
-                return render_template('download.html', video=video_info)
+            video_info = {
+                'title': info.get('title', 'No title'),
+                'thumbnail': info.get('thumbnail', ''),
+                'download_url': info.get('url'), # The single, direct download URL
+                'ext': info.get('ext', 'mp4')
+            }
+
+            if not video_info['download_url']:
+                 return render_template('index.html', error="Could not find a direct downloadable link for this video. It may be a live stream or protected.")
+
+            return render_template('download.html', video=video_info)
 
     except yt_dlp.utils.DownloadError as e:
         error_str = str(e)
@@ -118,9 +77,12 @@ def download():
         return render_template('index.html', error=error_message)
     except Exception as e:
         return render_template('index.html', error=f"An unexpected error occurred: {e}")
-
-# The /process_download route is no longer needed as direct URLs are provided.
-# The cookie file is cleaned up when the session is cleared or overwritten.
+    finally:
+        # Clean up cookie file after the request is done
+        if 'cookie_file_path' in session:
+            cookie_path = session.pop('cookie_file_path', None)
+            if cookie_path and os.path.exists(cookie_path):
+                os.remove(cookie_path)
 
 if __name__ == '__main__':
     app.run(debug=True)
