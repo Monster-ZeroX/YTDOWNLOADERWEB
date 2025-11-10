@@ -78,13 +78,13 @@
 
         const loadFFmpeg = async () => {
             log('Loading ffmpeg-core.js...');
-            const { FFmpeg } = FFmpegWASM; // Use the correct object provided by the UMD script
             ffmpeg = new FFmpeg();
             ffmpeg.on('log', ({ message }) => {
                 log(`[FFmpeg]: ${message}`);
             });
             await ffmpeg.load({
-                coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
+                coreURL: "{{ url_for('static', filename='ffmpeg-core.js') }}",
+                wasmURL: "{{ url_for('static', filename='ffmpeg-core.wasm') }}"
             });
             log('FFmpeg loaded successfully.');
         };
