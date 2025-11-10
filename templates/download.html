@@ -105,7 +105,11 @@
                     return;
                 }
 
-                await ffmpeg.load({ coreURL, wasmURL });
+                await ffmpeg.load({
+                    coreURL: "{{ url_for('static', filename='ffmpeg-core.js') }}",
+                    wasmURL: "{{ url_for('static', filename='ffmpeg-core.wasm') }}",
+                    workerURL: "{{ url_for('static', filename='814.ffmpeg.js') }}"
+                });
                 log('FFmpeg loaded successfully.');
             };
 
