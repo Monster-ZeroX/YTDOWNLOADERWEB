@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Processing - {{ video.title }}</title>
+    <title>Download - {{ video.title }}</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +15,7 @@
     <div class="container">
         <header class="header">
             <a href="/" class="back-link">&larr; Try another URL</a>
-            <h1>Client-Side Download</h1>
+            <h1>Download Ready</h1>
         </header>
 
         <main class="main-content">
@@ -26,156 +27,22 @@
             </div>
 
             <div class="download-section">
-                <p>This video will be downloaded and assembled entirely in your browser.</p>
-                <p>Your computer's resources (CPU/RAM) will be used. This may be slow for long videos.</p>
+                <p>Your direct download link is ready.</p>
                 
-                <button id="prepare-download-btn" class="download-button">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z"></path></svg>
-                    Prepare Download
-                </button>
+                <a href="{{ video.download_url }}" class="download-button" download="{{ video.title|replace(' ', '_') }}.{{ video.ext }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
+                    Download Now
+                </a>
 
-                <div id="final-download-section" style="display: none;">
-                    <p>Processing complete! Your file is ready.</p>
-                    <a href="#" id="final-download-link" class="download-button" download="{{ video.title|replace(' ', '_') }}.{{ video.ext }}">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
-                        Download Now
-                    </a>
-                </div>
-
-                <div id="logs-container" class="logs-container">
-                    <h4>Processing Log:</h4>
-                    <pre id="logs"></pre>
-                </div>
+                <p class="download-note">
+                    Note: This link may be temporary. Start the download soon.
+                </p>
             </div>
         </main>
 
         <footer class="footer">
-            <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> and <a href="https://ffmpegwasm.netlify.app/" target="_blank">ffmpeg.wasm</a>.</p>
+            <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a>.</p>
         </footer>
     </div>
-
-    <script src="{{ url_for('static', filename='ffmpeg.js') }}"></script>
-    <script>
-        const manifestUrl = "{{ video.manifest_url|safe }}";
-        const prepareBtn = document.getElementById('prepare-download-btn');
-        const finalDownloadSection = document.getElementById('final-download-section');
-        const finalDownloadLink = document.getElementById('final-download-link');
-        const logsContainer = document.getElementById('logs-container');
-        const logs = document.getElementById('logs');
-
-        const log = (message) => {
-            console.log(message);
-            logs.textContent += message + '\n';
-            logsContainer.scrollTop = logsContainer.scrollHeight;
-        };
-
-        // Final check to ensure the library loaded correctly.
-        if (typeof FFmpegWASM === 'undefined') {
-            logsContainer.style.display = 'block';
-            log('CRITICAL ERROR: The main FFmpeg library failed to load.');
-            log('This is likely because the ffmpeg.js file in the /static folder is corrupted or was saved incorrectly.');
-            log('Please re-download it from: https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js and place it in the /static folder.');
-        } else {
-            let ffmpeg;
-
-            const loadFFmpeg = async () => {
-                log('Loading ffmpeg-core.js...');
-                const { FFmpeg } = FFmpegWASM;
-                ffmpeg = new FFmpeg();
-                ffmpeg.on('log', ({ message }) => {
-                    log(`[FFmpeg]: ${message}`);
-                });
-
-                const coreURL = "{{ url_for('static', filename='ffmpeg-core.js') }}";
-                const wasmURL = "{{ url_for('static', filename='ffmpeg-core.wasm') }}";
-
-                try {
-                    log('Verifying core files are accessible...');
-                    const coreCheck = await fetch(coreURL);
-                    log(`- ffmpeg-core.js status: ${coreCheck.status} ${coreCheck.statusText}`);
-                    if (!coreCheck.ok) throw new Error('Failed to fetch ffmpeg-core.js. Please check the file in the /static folder.');
-
-                    const wasmCheck = await fetch(wasmURL);
-                    log(`- ffmpeg-core.wasm status: ${wasmCheck.status} ${wasmCheck.statusText}`);
-                    if (!wasmCheck.ok) throw new Error('Failed to fetch ffmpeg-core.wasm. Please check the file in the /static folder.');
-
-                    log('Core files are accessible. Proceeding to load FFmpeg...');
-                } catch (e) {
-                    log(`CRITICAL ERROR: ${e.message}`);
-                    return;
-                }
-
-                await ffmpeg.load({
-                    coreURL: "{{ url_for('static', filename='ffmpeg-core.js') }}",
-                    wasmURL: "{{ url_for('static', filename='ffmpeg-core.wasm') }}",
-                    workerURL: "{{ url_for('static', filename='ffmpeg-core.worker.js') }}"
-                });
-                log('FFmpeg loaded successfully.');
-            };
-
-            const startProcess = async () => {
-                prepareBtn.disabled = true;
-                prepareBtn.innerHTML = 'Processing... Please wait.';
-                logsContainer.style.display = 'block';
-
-                try {
-                    await loadFFmpeg();
-
-                    log('Fetching M3U8 manifest...');
-                    const response = await fetch(manifestUrl);
-                    const manifestText = await response.text();
-                    
-                    const segmentUrls = manifestText.split('\n').filter(line => line && !line.startsWith('#') && line.trim().endsWith('.ts'));
-                    if (segmentUrls.length === 0) {
-                        log('Error: No .ts segments found in the manifest. This format may not be a standard HLS playlist.');
-                        throw new Error('No .ts segments found in manifest.');
-                    }
-                    log(`Found ${segmentUrls.length} segments to download.`);
-
-                    const inputFileName = 'input.txt';
-                    let fileContent = '';
-
-                    for (let i = 0; i < segmentUrls.length; i++) {
-                        const segmentUrl = segmentUrls[i];
-                        const absoluteSegmentUrl = new URL(segmentUrl, manifestUrl).href;
-                        const segmentFileName = `segment${i}.ts`;
-                        
-                        log(`Downloading segment ${i + 1}/${segmentUrls.length}...`);
-                        const segmentResponse = await fetch(absoluteSegmentUrl);
-                        const segmentData = await segmentResponse.arrayBuffer();
-                        
-                        await ffmpeg.writeFile(segmentFileName, new Uint8Array(segmentData));
-                        fileContent += `file '${segmentFileName}'\n`;
-                    }
-
-                    await ffmpeg.writeFile(inputFileName, fileContent);
-
-                    log('All segments downloaded. Starting merge process with FFmpeg...');
-                    log('This may take several minutes and use a lot of CPU/RAM.');
-
-                    await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', inputFileName, '-c', 'copy', 'output.mp4']);
-
-                    log('Merge complete. Reading file from virtual filesystem...');
-                    const data = await ffmpeg.readFile('output.mp4');
-
-                    log('Creating download link...');
-                    const blob = new Blob([data.buffer], { type: 'video/mp4' });
-                    const blobUrl = URL.createObjectURL(blob);
-
-                    finalDownloadLink.href = blobUrl;
-                    prepareBtn.style.display = 'none';
-                    finalDownloadSection.style.display = 'block';
-                    log('Download is ready!');
-
-                } catch (error) {
-                    log('An error occurred: ' + error);
-                    prepareBtn.innerHTML = 'Failed. Please try again.';
-                    prepareBtn.disabled = false;
-                }
-            };
-
-            prepareBtn.addEventListener('click', startProcess);
-        }
-    </script>
 </body>
 </html>
