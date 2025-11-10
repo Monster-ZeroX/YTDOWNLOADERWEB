@@ -416,22 +416,3 @@ input::file-selector-button:hover {
     color: var(--secondary-text);
 }
 
-/* --- Form-based Link Styling --- */
-.format-form {
-    margin: 0;
-    padding: 0;
-    display: inline;
-}
-
-.format-form button {
-    /* Reset button styles to look like a link/div */
-    background: none;
-    color: inherit;
-    border: none;
-    padding: 0;
-    font: inherit;
-    cursor: pointer;
-    outline: inherit;
-    width: 100%; /* Make the button fill the list item */
-}
-

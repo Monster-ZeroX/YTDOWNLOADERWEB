@@ -1,10 +1,14 @@
+
 import yt_dlp
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session
 import os
 import tempfile
 from werkzeug.utils import secure_filename
+import secrets
 
 app = Flask(__name__)
+# In a real production app, this should be loaded from an environment variable
+app.secret_key = secrets.token_hex(16)
 
 def get_formats(video_info):
     """Helper function to extract and sort formats for a single video."""
@@ -40,13 +44,18 @@ def get_formats(video_info):
 
 @app.route('/')
 def index():
-    """Renders the main page."""
+    """Renders the main page and clears any old cookie file paths."""
+    # Clean up any lingering session data
+    if 'cookie_file_path' in session:
+        if os.path.exists(session['cookie_file_path']):
+            os.remove(session['cookie_file_path'])
+        session.pop('cookie_file_path', None)
     return render_template('index.html')
 
 @app.route('/download', methods=['POST'])
 def download():
     """
-    Fetches video/playlist info, passing cookie data to the template.
+    Fetches video/playlist info, saving cookie file path in session.
     """
     url = request.form['url']
     if not url:
@@ -55,11 +64,11 @@ def download():
     cookie_file = request.files.get('cookie_file')
     download_playlist = request.form.get('download_playlist') == 'yes'
     
-    cookie_data_string = ""
-    if cookie_file and cookie_file.filename:
-        cookie_data_string = cookie_file.read().decode('utf-8')
+    # Clear any old cookie file path from the session
+    if 'cookie_file_path' in session and os.path.exists(session['cookie_file_path']):
+        os.remove(session['cookie_file_path'])
+    session.pop('cookie_file_path', None)
 
-    cookie_temp_file = None
     try:
         ydl_opts = {
             'quiet': True,
@@ -67,23 +76,22 @@ def download():
             'noplaylist': not download_playlist,
         }
 
-        if cookie_data_string:
+        if cookie_file and cookie_file.filename:
             fd, path = tempfile.mkstemp(suffix='.txt')
-            cookie_temp_file = path
-            with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
-                tmp.write(cookie_data_string)
-            ydl_opts['cookiefile'] = cookie_temp_file
+            cookie_file.save(path)
+            # Store the path in the session
+            session['cookie_file_path'] = path
+            ydl_opts['cookiefile'] = path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
-            # Pass cookie data to the template for the next step
             if 'entries' in info and info['entries']:
                 for entry in info['entries']:
                     if entry:
                         entry['formats'] = get_formats(entry)
                         entry['original_url'] = entry.get('webpage_url')
-                return render_template('download.html', video=info, cookie_data=cookie_data_string)
+                return render_template('download.html', video=info)
             else:
                 unique_formats = get_formats(info)
                 video_info = {
@@ -92,41 +100,34 @@ def download():
                     'formats': unique_formats,
                     'original_url': info.get('webpage_url')
                 }
-                return render_template('download.html', video=video_info, cookie_data=cookie_data_string)
+                return render_template('download.html', video=video_info)
 
     except yt_dlp.utils.DownloadError as e:
         return render_template('index.html', error=f"Could not process URL. Please check if it's correct. Error: {e}")
     except Exception as e:
         return render_template('index.html', error=f"An unexpected error occurred: {e}")
-    finally:
-        if cookie_temp_file and os.path.exists(cookie_temp_file):
-            os.remove(cookie_temp_file)
 
-@app.route('/process_download', methods=['POST'])
+@app.route('/process_download')
 def process_download():
     """
-    Gets the direct download URL using cookies if provided.
+    Gets the direct download URL using the cookie path from the session.
     """
-    url = request.form.get('url')
-    format_id = request.form.get('format_id')
-    cookie_data = request.form.get('cookie_data')
+    url = request.args.get('url')
+    format_id = request.args.get('format_id')
 
     if not url or not format_id:
         return redirect('/')
 
-    cookie_temp_file = None
+    cookie_path = session.get('cookie_file_path')
+    
     try:
         ydl_opts = {
             'format': format_id,
             'quiet': True,
         }
 
-        if cookie_data:
-            fd, path = tempfile.mkstemp(suffix='.txt')
-            cookie_temp_file = path
-            with os.fdopen(fd, 'w', encoding='utf-8') as tmp:
-                tmp.write(cookie_data)
-            ydl_opts['cookiefile'] = cookie_temp_file
+        if cookie_path and os.path.exists(cookie_path):
+            ydl_opts['cookiefile'] = cookie_path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -138,8 +139,10 @@ def process_download():
     except Exception as e:
         return render_template('index.html', error=f"An error occurred while processing the download: {e}")
     finally:
-        if cookie_temp_file and os.path.exists(cookie_temp_file):
-            os.remove(cookie_temp_file)
+        # Clean up the cookie file after the first use
+        if cookie_path and os.path.exists(cookie_path):
+            os.remove(cookie_path)
+            session.pop('cookie_file_path', None)
 
 if __name__ == '__main__':
     app.run(debug=True)
