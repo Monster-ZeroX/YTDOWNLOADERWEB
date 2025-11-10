@@ -59,22 +59,29 @@
         </footer>
     </div>
 
+    <script src="{{ url_for('static', filename='ffmpeg.js') }}"></script>
     <script>
-        function init() {
-            const manifestUrl = "{{ video.manifest_url|safe }}";
-            const prepareBtn = document.getElementById('prepare-download-btn');
-            const finalDownloadSection = document.getElementById('final-download-section');
-            const finalDownloadLink = document.getElementById('final-download-link');
-            const logsContainer = document.getElementById('logs-container');
-            const logs = document.getElementById('logs');
+        const manifestUrl = "{{ video.manifest_url|safe }}";
+        const prepareBtn = document.getElementById('prepare-download-btn');
+        const finalDownloadSection = document.getElementById('final-download-section');
+        const finalDownloadLink = document.getElementById('final-download-link');
+        const logsContainer = document.getElementById('logs-container');
+        const logs = document.getElementById('logs');
 
+        const log = (message) => {
+            console.log(message);
+            logs.textContent += message + '\n';
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        };
+
+        // Final check to ensure the library loaded correctly.
+        if (typeof FFmpeg === 'undefined') {
+            logsContainer.style.display = 'block';
+            log('CRITICAL ERROR: The main FFmpeg library failed to load.');
+            log('This is likely because the ffmpeg.js file in the /static folder is corrupted or was saved incorrectly.');
+            log('Please re-download it from: https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js and place it in the /static folder.');
+        } else {
             let ffmpeg;
-
-            const log = (message) => {
-                console.log(message);
-                logs.textContent += message + '\n';
-                logsContainer.scrollTop = logsContainer.scrollHeight;
-            };
 
             const loadFFmpeg = async () => {
                 log('Loading ffmpeg-core.js...');
@@ -136,7 +143,7 @@
 
                     log('Creating download link...');
                     const blob = new Blob([data.buffer], { type: 'video/mp4' });
-                    const blobUrl = URL.createObjectURL(blob.buffer);
+                    const blobUrl = URL.createObjectURL(blob);
 
                     finalDownloadLink.href = blobUrl;
                     prepareBtn.style.display = 'none';
@@ -153,6 +160,5 @@
             prepareBtn.addEventListener('click', startProcess);
         }
     </script>
-    <script src="{{ url_for('static', filename='ffmpeg.js') }}" onload="init()"></script>
 </body>
 </html>
