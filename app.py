@@ -1,9 +1,9 @@
-
 import yt_dlp
-from flask import Flask, render_template, request, redirect, session
+from flask import Flask, render_template, request, redirect, session, Response
 import os
 import tempfile
 import secrets
+import requests
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -20,7 +20,7 @@ def index():
 @app.route('/download', methods=['POST'])
 def download():
     """
-    Uses yt-dlp to extract a single, direct download URL.
+    Uses yt-dlp to extract the HLS manifest URL (.m3u8) for client-side processing.
     """
     url = request.form['url']
     if not url:
@@ -28,22 +28,19 @@ def download():
 
     cookie_file = request.files.get('cookie_file')
     
-    # Clean up any previous cookie file from the session
     if 'cookie_file_path' in session and os.path.exists(session['cookie_file_path']):
         os.remove(session['cookie_file_path'])
     session.pop('cookie_file_path', None)
 
     try:
-        # This format string prefers a single, pre-merged MP4 file.
-        # It's the most reliable format for direct browser downloads.
+        # This format string specifically asks for the HLS manifest
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'format': 'bestvideo[protocol=m3u8_native]+bestaudio[protocol=m3u8_native]/best[protocol=m3u8_native]',
         }
 
         if cookie_file and cookie_file.filename:
-            # Save the cookie file to a temporary location
             fd, path = tempfile.mkstemp(suffix='.txt')
             cookie_file.save(path)
             session['cookie_file_path'] = path
@@ -52,18 +49,15 @@ def download():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
-            # We need to find the URL of the requested format after extraction
-            download_url = info.get('url')
-
-            if not download_url:
-                 return render_template('index.html', error="Could not find a direct download link for this video. It might only be available as a protected stream.")
-
             video_info = {
                 'title': info.get('title', 'No title'),
                 'thumbnail': info.get('thumbnail', ''),
-                'download_url': download_url,
-                'ext': info.get('ext', 'mp4')
+                'manifest_url': info.get('url'), # The HLS manifest URL
+                'ext': 'mp4'
             }
+
+            if not video_info['manifest_url']:
+                 return render_template('index.html', error="Could not find a suitable HLS stream for this video. It may be a live stream or protected in a way that is not supported.")
 
             return render_template('download.html', video=video_info)
 
@@ -77,11 +71,32 @@ def download():
     except Exception as e:
         return render_template('index.html', error=f"An unexpected error occurred: {e}")
     finally:
-        # Clean up the cookie file after the request is done
+        # Clean up cookie file after the request is done
         if 'cookie_file_path' in session:
             cookie_path = session.pop('cookie_file_path', None)
             if cookie_path and os.path.exists(cookie_path):
                 os.remove(cookie_path)
+
+@app.route('/proxy')
+def proxy():
+    """
+    A proxy to fetch cross-origin resources (manifests, segments)
+    to bypass browser CORS restrictions.
+    """
+    url = request.args.get('url')
+    if not url:
+        return "No URL provided", 400
+
+    try:
+        # It's important to stream the response to handle large files (video segments)
+        # without loading them all into memory at once.
+        req = requests.get(url, stream=True)
+        
+        # Pass through the content and headers from the original source
+        return Response(req.iter_content(chunk_size=1024), content_type=req.headers['content-type'])
+    except Exception as e:
+        return f"Failed to proxy request: {e}", 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
