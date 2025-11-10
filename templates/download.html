@@ -13,7 +13,7 @@
         // Required for FFmpeg.wasm to work
         document.documentElement.setAttribute('crossorigin', 'anonymous');
     </script>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js" onload="init()"></script>
 </head>
 <body>
     <div class="container">
@@ -60,94 +60,96 @@
     </div>
 
     <script>
-        const manifestUrl = "{{ video.manifest_url|safe }}";
-        const prepareBtn = document.getElementById('prepare-download-btn');
-        const finalDownloadSection = document.getElementById('final-download-section');
-        const finalDownloadLink = document.getElementById('final-download-link');
-        const logsContainer = document.getElementById('logs-container');
-        const logs = document.getElementById('logs');
+        function init() {
+            const manifestUrl = "{{ video.manifest_url|safe }}";
+            const prepareBtn = document.getElementById('prepare-download-btn');
+            const finalDownloadSection = document.getElementById('final-download-section');
+            const finalDownloadLink = document.getElementById('final-download-link');
+            const logsContainer = document.getElementById('logs-container');
+            const logs = document.getElementById('logs');
 
-        let ffmpeg;
+            let ffmpeg;
 
-        const log = (message) => {
-            console.log(message);
-            logs.textContent += message + '\n';
-            logsContainer.scrollTop = logsContainer.scrollHeight;
-        };
+            const log = (message) => {
+                console.log(message);
+                logs.textContent += message + '\n';
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+            };
 
-        const loadFFmpeg = async () => {
-            log('Loading ffmpeg-core.js...');
-            ffmpeg = new FFmpeg.FFmpeg();
-            ffmpeg.on('log', ({ message }) => {
-                log(`[FFmpeg]: ${message}`);
-            });
-            await ffmpeg.load({
-                coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
-            });
-            log('FFmpeg loaded successfully.');
-        };
+            const loadFFmpeg = async () => {
+                log('Loading ffmpeg-core.js...');
+                ffmpeg = new FFmpeg.FFmpeg();
+                ffmpeg.on('log', ({ message }) => {
+                    log(`[FFmpeg]: ${message}`);
+                });
+                await ffmpeg.load({
+                    coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
+                });
+                log('FFmpeg loaded successfully.');
+            };
 
-        const startProcess = async () => {
-            prepareBtn.disabled = true;
-            prepareBtn.innerHTML = 'Processing... Please wait.';
-            logsContainer.style.display = 'block';
+            const startProcess = async () => {
+                prepareBtn.disabled = true;
+                prepareBtn.innerHTML = 'Processing... Please wait.';
+                logsContainer.style.display = 'block';
 
-            try {
-                await loadFFmpeg();
+                try {
+                    await loadFFmpeg();
 
-                log('Fetching M3U8 manifest...');
-                const response = await fetch(manifestUrl);
-                const manifestText = await response.text();
-                
-                const segmentUrls = manifestText.split('\n').filter(line => line && !line.startsWith('#'));
-                log(`Found ${segmentUrls.length} segments to download.`);
-
-                const inputFileName = 'input.txt';
-                let fileContent = '';
-
-                for (let i = 0; i < segmentUrls.length; i++) {
-                    const segmentUrl = segmentUrls[i];
-                    // M3U8 URLs can be relative, so we need to resolve them
-                    const absoluteSegmentUrl = new URL(segmentUrl, manifestUrl).href;
-                    const segmentFileName = `segment${i}.ts`;
+                    log('Fetching M3U8 manifest...');
+                    const response = await fetch(manifestUrl);
+                    const manifestText = await response.text();
                     
-                    log(`Downloading segment ${i + 1}/${segmentUrls.length}...`);
-                    const segmentResponse = await fetch(absoluteSegmentUrl);
-                    const segmentData = await segmentResponse.arrayBuffer();
-                    
-                    log(`Writing ${segmentFileName} to virtual filesystem...`);
-                    await ffmpeg.writeFile(segmentFileName, new Uint8Array(segmentData));
-                    fileContent += `file '${segmentFileName}'\n`;
+                    const segmentUrls = manifestText.split('\n').filter(line => line && !line.startsWith('#'));
+                    log(`Found ${segmentUrls.length} segments to download.`);
+
+                    const inputFileName = 'input.txt';
+                    let fileContent = '';
+
+                    for (let i = 0; i < segmentUrls.length; i++) {
+                        const segmentUrl = segmentUrls[i];
+                        // M3U8 URLs can be relative, so we need to resolve them
+                        const absoluteSegmentUrl = new URL(segmentUrl, manifestUrl).href;
+                        const segmentFileName = `segment${i}.ts`;
+                        
+                        log(`Downloading segment ${i + 1}/${segmentUrls.length}...`);
+                        const segmentResponse = await fetch(absoluteSegmentUrl);
+                        const segmentData = await segmentResponse.arrayBuffer();
+                        
+                        log(`Writing ${segmentFileName} to virtual filesystem...`);
+                        await ffmpeg.writeFile(segmentFileName, new Uint8Array(segmentData));
+                        fileContent += `file '${segmentFileName}'\n`;
+                    }
+
+                    await ffmpeg.writeFile(inputFileName, fileContent);
+
+                    log('All segments downloaded. Starting merge process with FFmpeg...');
+                    log('This may take several minutes and use a lot of CPU/RAM.');
+
+                    // FFmpeg command to concatenate the segments without re-encoding
+                    await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', inputFileName, '-c', 'copy', 'output.mp4']);
+
+                    log('Merge complete. Reading file from virtual filesystem...');
+                    const data = await ffmpeg.readFile('output.mp4');
+
+                    log('Creating download link...');
+                    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+                    const blobUrl = URL.createObjectURL(blob);
+
+                    finalDownloadLink.href = blobUrl;
+                    prepareBtn.style.display = 'none';
+                    finalDownloadSection.style.display = 'block';
+                    log('Download is ready!');
+
+                } catch (error) {
+                    log('An error occurred: ' + error);
+                    prepareBtn.innerHTML = 'Failed. Please try again.';
+                    prepareBtn.disabled = false;
                 }
+            };
 
-                await ffmpeg.writeFile(inputFileName, fileContent);
-
-                log('All segments downloaded. Starting merge process with FFmpeg...');
-                log('This may take several minutes and use a lot of CPU/RAM.');
-
-                // FFmpeg command to concatenate the segments without re-encoding
-                await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', inputFileName, '-c', 'copy', 'output.mp4']);
-
-                log('Merge complete. Reading file from virtual filesystem...');
-                const data = await ffmpeg.readFile('output.mp4');
-
-                log('Creating download link...');
-                const blob = new Blob([data.buffer], { type: 'video/mp4' });
-                const blobUrl = URL.createObjectURL(blob);
-
-                finalDownloadLink.href = blobUrl;
-                prepareBtn.style.display = 'none';
-                finalDownloadSection.style.display = 'block';
-                log('Download is ready!');
-
-            } catch (error) {
-                log('An error occurred: ' + error);
-                prepareBtn.innerHTML = 'Failed. Please try again.';
-                prepareBtn.disabled = false;
-            }
-        };
-
-        prepareBtn.addEventListener('click', startProcess);
+            prepareBtn.addEventListener('click', startProcess);
+        }
     </script>
 </body>
 </html>
