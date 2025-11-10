@@ -39,16 +39,6 @@
                     </div>
                 </div>
 
-                <div class="quality-group">
-                    <h3>Audio Quality</h3>
-                    <div class="radio-toolbar">
-                        {% for format in audio_formats %}
-                        <input type="radio" id="audio-{{ loop.index }}" name="audio_url" value="{{ format.url }}" {% if loop.first %}checked{% endif %}>
-                        <label for="audio-{{ loop.index }}">{{ format.abr }}kbps ({{ format.note }})</label>
-                        {% endfor %}
-                    </div>
-                </div>
-
                 <button type="submit" class="download-button">
                     Prepare Download
                 </button>

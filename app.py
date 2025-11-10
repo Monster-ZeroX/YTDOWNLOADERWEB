@@ -60,38 +60,26 @@ def select_formats():
 
         for f in info.get('formats', []):
             print(f"  Format: id={f.get('format_id')}, protocol={f.get('protocol')}, vcodec={f.get('vcodec')}, acodec={f.get('acodec')}, ext={f.get('ext')}, url={f.get('url')}") # Debug log
-            # Prioritize HLS and DASH protocols for adaptive streams
-            if f.get('protocol') in ['m3u8_native', 'https', 'http']:
-                # Video-only formats
-                if f.get('vcodec') != 'none' and f.get('acodec') == 'none':
-                    video_formats.append({
-                        'format_id': f.get('format_id'),
-                        'ext': f.get('ext'),
-                        'resolution': f.get('resolution'),
-                        'fps': f.get('fps'),
-                        'url': f.get('url'),
-                        'note': f.get('format_note', 'Video')
-                    })
-                # Audio-only formats
-                elif f.get('acodec') != 'none' and f.get('vcodec') == 'none':
-                    audio_formats.append({
-                        'format_id': f.get('format_id'),
-                        'ext': f.get('ext'),
-                        'abr': f.get('abr'),
-                        'url': f.get('url'),
-                        'note': f.get('format_note', 'Audio')
-                    })
+            # Filter for combined video+audio streams that are adaptive (HLS/DASH)
+            if f.get('protocol') in ['m3u8_native', 'https', 'http'] and \
+               f.get('vcodec') != 'none' and f.get('acodec') != 'none':
+                video_formats.append({
+                    'format_id': f.get('format_id'),
+                    'ext': f.get('ext'),
+                    'resolution': f.get('resolution'),
+                    'fps': f.get('fps'),
+                    'url': f.get('url'),
+                    'note': f.get('format_note', 'Combined')
+                })
         
-        # Sort by quality (resolution for video, bitrate for audio)
-        video_formats.sort(key=lambda v: v.get('resolution', '0x0').split('x')[1], reverse=True)
-        audio_formats.sort(key=lambda a: a.get('abr', 0), reverse=True)
+        # Sort by quality (resolution for video)
+        video_formats.sort(key=lambda v: int(v.get('resolution', '0x0').split('x')[1]) if 'x' in v.get('resolution', '0x0') else 0, reverse=True)
 
-        if not video_formats or not audio_formats:
-            return render_template('index.html', error="Could not find separate video and audio streams for quality selection. The video might be in an unsupported format.")
+        if not video_formats:
+            return render_template('index.html', error="Could not find any suitable combined video+audio streams for quality selection. The video might be in an unsupported format.")
 
         return render_template('select_quality.html', 
                                video_formats=video_formats, 
-                               audio_formats=audio_formats,
                                title=info.get('title', 'Unknown Title'),
                                thumbnail=info.get('thumbnail', ''))
 
@@ -101,19 +89,17 @@ def select_formats():
 @app.route('/process', methods=['POST'])
 def process_download():
     """
-    Receives the selected format URLs and passes them to the download page.
+    Receives the selected format URL and passes it to the download page.
     """
     video_url = request.form.get('video_url')
-    audio_url = request.form.get('audio_url')
     title = request.form.get('title')
 
-    if not video_url or not audio_url:
-        return render_template('index.html', error="You must select both a video and an audio quality.")
+    if not video_url:
+        return render_template('index.html', error="You must select a video quality.")
 
     video_info = {
         'title': title,
-        'video_manifest_url': video_url,
-        'audio_manifest_url': audio_url,
+        'manifest_url': video_url, # Now only one manifest URL
         'ext': 'mp4'
     }
     return render_template('download.html', video=video_info)
