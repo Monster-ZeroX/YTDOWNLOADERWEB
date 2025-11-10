@@ -19,68 +19,35 @@
         </header>
 
         <main class="main-content">
-            {# Check if this is a playlist #}
-            {% if video.entries %}
-                <div class="playlist-header">
-                    <h2>Playlist: {{ video.title }}</h2>
-                    <p>{{ video.entries | length }} videos found</p>
-                </div>
+            <div class="video-info-card">
+                {% if video.thumbnail %}
+                    <img src="{{ video.thumbnail }}" alt="Video Thumbnail" class="video-thumbnail">
+                {% endif %}
+                <h2 class="video-title">{{ video.title }}</h2>
+            </div>
 
-                {% for entry in video.entries %}
-                    <div class="video-info-card playlist-item">
-                        {% if entry.thumbnail %}
-                            <img src="{{ entry.thumbnail }}" alt="Video Thumbnail" class="video-thumbnail-small">
-                        {% endif %}
-                        <div class="video-details">
-                            <h3 class="video-title-small">{{ entry.title }}</h3>
-                            <div class="format-list-small">
-                                <ul>
-                                    {% for format in entry.formats %}
-                                        <li>
-                                            <a href="{{ url_for('process_download', url=entry.original_url, format_id=format.format_id) }}" class="format-link-small">
-                                                <span>{{ format.note }}</span>
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"></path><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"></path></svg>
-                                            </a>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-
-            {# Fallback for single video #}
-            {% else %}
-                <div class="video-info-card">
-                    {% if video.thumbnail %}
-                        <img src="{{ video.thumbnail }}" alt="Video Thumbnail" class="video-thumbnail">
-                    {% endif %}
-                    <h2 class="video-title">{{ video.title }}</h2>
-                </div>
-
-                <div class="format-list">
-                    <h3>Available Formats</h3>
-                    <ul>
-                        {% for format in video.formats %}
-                            <li>
-                                <a href="{{ url_for('process_download', url=video.original_url, format_id=format.format_id) }}" class="format-link">
-                                    <div class="format-type">{{ format.type }}</div>
-                                    <div class="format-note">{{ format.note }}</div>
-                                    <div class="format-download-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
-                                    </div>
-                                </a>
-                            </li>
-                        {% else %}
-                            <li>No downloadable formats found. The video may be protected or a live stream.</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            {% endif %}
+            <div class="format-list">
+                <h3>Available Formats</h3>
+                <ul>
+                    {% for format in video.formats %}
+                        <li>
+                            <a href="{{ format.url }}" download="{{ video.title|replace(' ', '_') }}.{{ format.ext }}" class="format-link" target="_blank" rel="noopener noreferrer">
+                                <div class="format-type">{{ format.type }}</div>
+                                <div class="format-note">{{ format.note }}</div>
+                                <div class="format-download-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
+                                </div>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li>No downloadable formats found. The API may not support this video.</li>
+                    {% endfor %}
+                </ul>
+            </div>
         </main>
 
         <footer class="footer">
-            <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a>. Source code on <a href="https://github.com/YOUR_USERNAME/YTDOWNLOADERWEB" target="_blank">GitHub</a>.</p>
+            <p>Powered by RapidAPI. Source code on <a href="https://github.com/YOUR_USERNAME/YTDOWNLOADERWEB" target="_blank">GitHub</a>.</p>
         </footer>
     </div>
 </body>
