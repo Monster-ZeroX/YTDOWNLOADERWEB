@@ -1,9 +1,7 @@
-
 import yt_dlp
 from flask import Flask, render_template, request, redirect, session
 import os
 import tempfile
-from werkzeug.utils import secure_filename
 import secrets
 import re
 
@@ -13,12 +11,14 @@ app.secret_key = secrets.token_hex(16)
 
 def get_formats(video_info):
     """
-    Helper function to extract and sort formats. This version is less
-    aggressive to ensure all options are shown.
+    Helper function to extract and sort formats, including their direct download URLs.
     """
     formats = []
     for f in video_info.get('formats', []):
-        # Prioritize single-file downloads (vcodec and acodec are not 'none')
+        # Only include formats that have a direct URL
+        if not f.get('url'):
+            continue
+
         is_video = f.get('vcodec', 'none') != 'none' and f.get('acodec', 'none') != 'none'
         is_audio = f.get('vcodec', 'none') == 'none' and f.get('acodec', 'none') != 'none'
 
@@ -29,14 +29,16 @@ def get_formats(video_info):
                     'format_id': f['format_id'],
                     'ext': f['ext'],
                     'note': f"{resolution}p, {f['ext']}",
-                    'type': 'Video'
+                    'type': 'Video',
+                    'url': f['url'] # Include the direct URL
                 })
         elif is_audio:
             formats.append({
                 'format_id': f['format_id'],
                 'ext': f['ext'],
                 'note': f"Audio, ~{f.get('abr', 0)}kbps, {f['ext']}",
-                'type': 'Audio'
+                'type': 'Audio',
+                'url': f['url'] # Include the direct URL
             })
 
     unique_formats = []
@@ -47,11 +49,6 @@ def get_formats(video_info):
             unique_formats.append(f)
             seen_notes.add(f['note'])
     
-    # If no progressive formats were found, it's better to show something than nothing.
-    # This part can be expanded to include adaptive formats if needed.
-    if not unique_formats:
-        return formats # Return the original unfiltered list if the unique list is empty
-
     return unique_formats
 
 @app.route('/')
@@ -84,6 +81,7 @@ def download():
             'quiet': True,
             'no_warnings': True,
             'noplaylist': not download_playlist,
+            'format_sort': ['res', 'ext', 'vcodec'], # Prioritize resolution, then extension, then video codec
         }
 
         if cookie_file and cookie_file.filename:
@@ -121,42 +119,8 @@ def download():
     except Exception as e:
         return render_template('index.html', error=f"An unexpected error occurred: {e}")
 
-@app.route('/process_download')
-def process_download():
-    """
-    Gets the direct download URL using the cookie path from the session and redirects.
-    """
-    url = request.args.get('url')
-    format_id = request.args.get('format_id')
-
-    if not url or not format_id:
-        return redirect('/')
-
-    cookie_path = session.get('cookie_file_path')
-    
-    try:
-        ydl_opts = {
-            'format': format_id,
-            'quiet': True,
-        }
-
-        if cookie_path and os.path.exists(cookie_path):
-            ydl_opts['cookiefile'] = cookie_path
-
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            download_url = info.get('url')
-            if download_url:
-                return redirect(download_url)
-            else:
-                return render_template('index.html', error="Could not get direct download link. This format may require cookies or be otherwise protected.")
-    except Exception as e:
-        return render_template('index.html', error=f"An error occurred while processing the download: {e}")
-    finally:
-        # Clean up the cookie file after trying to use it
-        if cookie_path and os.path.exists(cookie_path):
-            os.remove(cookie_path)
-            session.pop('cookie_file_path', None)
+# The /process_download route is no longer needed as direct URLs are provided.
+# The cookie file is cleaned up when the session is cleared or overwritten.
 
 if __name__ == '__main__':
     app.run(debug=True)
