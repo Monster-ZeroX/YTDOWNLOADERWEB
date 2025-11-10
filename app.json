@@ -7,7 +7,7 @@
   "keywords": ["python", "flask", "youtube", "downloader", "yt-dlp"],
   "buildpacks": [
     {
-      "url": "heroku-community/ffmpeg"
+      "url": "https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git"
     },
     {
       "url": "heroku/python"
