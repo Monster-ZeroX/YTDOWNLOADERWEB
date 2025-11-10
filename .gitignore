@@ -1,0 +1,34 @@
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+.tox/
+.coverage
+.pytest_cache/
+htmlcov/
+.mypy_cache/
+
+# Flask specific
+instance/
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+.Trashes
+Thumbs.db
+
+# Heroku
+.heroku/
+
+# Logs and temporary files
+*.log
+*.tmp

@@ -1,0 +1,3 @@
+
+# Declare files that will always have Unix line endings
+* text=auto eol=lf

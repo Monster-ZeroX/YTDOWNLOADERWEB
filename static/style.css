@@ -1,0 +1,227 @@
+
+/* --- Global Styles & Variables --- */
+:root {
+    --background-color: #f0f2f5;
+    --card-background: #ffffff;
+    --primary-text: #1c1e21;
+    --secondary-text: #606770;
+    --accent-color: #007aff;
+    --accent-hover: #0056b3;
+    --border-color: #dddfe2;
+    --error-background: #ffebe8;
+    --error-text: #c91c0d;
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--background-color);
+    color: var(--primary-text);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+/* --- Layout --- */
+.container {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.header, .main-content, .footer {
+    width: 100%;
+}
+
+.header {
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.header p {
+    font-size: 1.1rem;
+    color: var(--secondary-text);
+    margin-top: 0;
+}
+
+.footer {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--secondary-text);
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+.disclaimer {
+    font-size: 0.8rem;
+    margin-top: 10px;
+}
+
+/* --- Forms & Buttons --- */
+.url-form {
+    display: flex;
+    gap: 10px;
+    background: var(--card-background);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.url-form input[type="text"] {
+    flex-grow: 1;
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    font-size: 1rem;
+    border-radius: 8px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.url-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+.url-form button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 0 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.url-form button:hover {
+    background-color: var(--accent-hover);
+}
+
+/* --- Download Page Specifics --- */
+.back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: var(--accent-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.video-info-card {
+    background: var(--card-background);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+}
+
+.video-thumbnail {
+    width: 100%;
+    max-width: 320px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.video-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.format-list h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    padding-left: 5px;
+}
+
+.format-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.format-link {
+    display: flex;
+    align-items: center;
+    background: var(--card-background);
+    padding: 15px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--primary-text);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.format-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.format-type {
+    font-weight: 500;
+    background-color: var(--background-color);
+    padding: 5px 10px;
+    border-radius: 6px;
+    margin-right: 15px;
+    font-size: 0.9rem;
+}
+
+.format-note {
+    flex-grow: 1;
+    color: var(--secondary-text);
+}
+
+.format-download-icon svg {
+    color: var(--accent-color);
+}
+
+/* --- Error Message --- */
+.error-message {
+    background-color: var(--error-background);
+    border: 1px solid var(--error-text);
+    color: var(--error-text);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+    .header h1 {
+        font-size: 2rem;
+    }
+    .url-form {
+        flex-direction: column;
+    }
+}
