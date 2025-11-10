@@ -90,11 +90,13 @@
             };
 
             const startProcess = async () => {
+                log('`startProcess` function initiated by click.');
                 prepareBtn.disabled = true;
                 prepareBtn.innerHTML = 'Processing... Please wait.';
                 logsContainer.style.display = 'block';
 
                 try {
+                    log('Attempting to call `loadFFmpeg`...');
                     await loadFFmpeg();
 
                     log('Fetching M3U8 manifest via proxy...');
