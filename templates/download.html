@@ -59,7 +59,6 @@
         </footer>
     </div>
 
-    <script src="{{ url_for('static', filename='ffmpeg.js') }}" onload="init()"></script>
     <script>
         function init() {
             const manifestUrl = "{{ video.manifest_url|safe }}";
@@ -137,7 +136,7 @@
 
                     log('Creating download link...');
                     const blob = new Blob([data.buffer], { type: 'video/mp4' });
-                    const blobUrl = URL.createObjectURL(blob);
+                    const blobUrl = URL.createObjectURL(blob.buffer);
 
                     finalDownloadLink.href = blobUrl;
                     prepareBtn.style.display = 'none';
@@ -154,5 +153,6 @@
             prepareBtn.addEventListener('click', startProcess);
         }
     </script>
+    <script src="{{ url_for('static', filename='ffmpeg.js') }}" onload="init()"></script>
 </body>
 </html>
