@@ -85,6 +85,7 @@
 
             const loadFFmpeg = async () => {
                 log('Loading ffmpeg-core.js...');
+                const { FFmpeg } = FFmpegWASM;
                 ffmpeg = new FFmpeg();
                 ffmpeg.on('log', ({ message }) => {
                     log(`[FFmpeg]: ${message}`);
