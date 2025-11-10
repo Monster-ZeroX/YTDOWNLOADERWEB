@@ -57,8 +57,8 @@ def select_formats():
         audio_formats = []
 
         for f in info.get('formats', []):
-            # We only want formats that provide an HLS manifest
-            if f.get('protocol') == 'm3u8_native':
+            # Prioritize HLS and DASH protocols for adaptive streams
+            if f.get('protocol') in ['m3u8_native', 'https', 'http']:
                 # Video-only formats
                 if f.get('vcodec') != 'none' and f.get('acodec') == 'none':
                     video_formats.append({
