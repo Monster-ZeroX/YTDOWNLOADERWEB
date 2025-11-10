@@ -75,7 +75,7 @@
         };
 
         // Final check to ensure the library loaded correctly.
-        if (typeof FFmpeg === 'undefined') {
+        if (typeof FFmpegWASM === 'undefined') {
             logsContainer.style.display = 'block';
             log('CRITICAL ERROR: The main FFmpeg library failed to load.');
             log('This is likely because the ffmpeg.js file in the /static folder is corrupted or was saved incorrectly.');
