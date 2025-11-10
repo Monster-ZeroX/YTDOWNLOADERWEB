@@ -56,16 +56,38 @@
 
     <script>
         function init() {
-            const manifestUrl = "{{ video.manifest_url|safe }}";
             const prepareBtn = document.getElementById('prepare-download-btn');
-            const finalDownloadSection = document.getElementById('final-download-section');
-            const finalDownloadLink = document.getElementById('final-download-link');
             const logsContainer = document.getElementById('logs-container');
             const logs = document.getElementById('logs');
 
+            const log = (message) => {
+                logsContainer.style.display = 'block';
+                console.log(message);
+                logs.textContent += message + '\n';
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+            };
+
+            if (!prepareBtn) {
+                log('DIAGNOSTIC ERROR: The "Prepare Download" button could not be found in the document.');
+                return;
+            }
+
+            log('Diagnostic mode enabled. Attaching a simple click test.');
+
+            prepareBtn.addEventListener('click', () => {
+                log('SUCCESS: Button click detected! The basic event listener is working.');
+            });
+
+            /*
+            // ----------------------------------------------------------------
+            // --- ALL ORIGINAL APPLICATION LOGIC IS COMMENTED OUT FOR TEST ---
+            // ----------------------------------------------------------------
+            const manifestUrl = "{{ video.manifest_url|safe }}";
+            const finalDownloadSection = document.getElementById('final-download-section');
+            const finalDownloadLink = document.getElementById('final-download-link');
+
             // Final check to ensure the library loaded correctly.
             if (typeof FFmpegWASM === 'undefined') {
-                logsContainer.style.display = 'block';
                 log('CRITICAL ERROR: The main FFmpeg library failed to load.');
                 log('This is likely because the ffmpeg.js file in the /static folder is corrupted or was saved incorrectly.');
                 return;
@@ -159,6 +181,7 @@
             };
 
             prepareBtn.addEventListener('click', startProcess);
+            */
         }
     </script>
     <script src="{{ url_for('static', filename='ffmpeg.js') }}" onload="init()"></script>
