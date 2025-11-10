@@ -37,10 +37,15 @@
                                 <ul>
                                     {% for format in entry.formats %}
                                         <li>
-                                            <a href="{{ url_for('process_download', url=entry.original_url, format_id=format.format_id) }}" class="format-link-small">
-                                                <span>{{ format.note }}</span>
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"></path><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"></path></svg>
-                                            </a>
+                                            <form action="{{ url_for('process_download') }}" method="POST" class="format-form">
+                                                <input type="hidden" name="url" value="{{ entry.original_url }}">
+                                                <input type="hidden" name="format_id" value="{{ format.format_id }}">
+                                                <input type="hidden" name="cookie_data" value="{{ cookie_data }}">
+                                                <button type="submit" class="format-link-small">
+                                                    <span>{{ format.note }}</span>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" width="20" height="20"><path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.955 3.129V2.75z"></path><path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z"></path></svg>
+                                                </button>
+                                            </form>
                                         </li>
                                     {% endfor %}
                                 </ul>
@@ -63,13 +68,18 @@
                     <ul>
                         {% for format in video.formats %}
                             <li>
-                                <a href="{{ url_for('process_download', url=video.original_url, format_id=format.format_id) }}" class="format-link">
-                                    <div class="format-type">{{ format.type }}</div>
-                                    <div class="format-note">{{ format.note }}</div>
-                                    <div class="format-download-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
-                                    </div>
-                                </a>
+                                <form action="{{ url_for('process_download') }}" method="POST" class="format-form">
+                                    <input type="hidden" name="url" value="{{ video.original_url }}">
+                                    <input type="hidden" name="format_id" value="{{ format.format_id }}">
+                                    <input type="hidden" name="cookie_data" value="{{ cookie_data }}">
+                                    <button type="submit" class="format-link">
+                                        <div class="format-type">{{ format.type }}</div>
+                                        <div class="format-note">{{ format.note }}</div>
+                                        <div class="format-download-icon">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
+                                        </div>
+                                    </button>
+                                </form>
                             </li>
                         {% else %}
                             <li>No downloadable formats found. The video may be protected or a live stream.</li>
