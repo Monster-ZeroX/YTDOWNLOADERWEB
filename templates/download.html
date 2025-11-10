@@ -90,10 +90,27 @@
                 ffmpeg.on('log', ({ message }) => {
                     log(`[FFmpeg]: ${message}`);
                 });
-                await ffmpeg.load({
-                    coreURL: "{{ url_for('static', filename='ffmpeg-core.js') }}",
-                    wasmURL: "{{ url_for('static', filename='ffmpeg-core.wasm') }}"
-                });
+
+                const coreURL = "{{ url_for('static', filename='ffmpeg-core.js') }}";
+                const wasmURL = "{{ url_for('static', filename='ffmpeg-core.wasm') }}";
+
+                try {
+                    log('Verifying core files are accessible...');
+                    const coreCheck = await fetch(coreURL);
+                    log(`- ffmpeg-core.js status: ${coreCheck.status} ${coreCheck.statusText}`);
+                    if (!coreCheck.ok) throw new Error('Failed to fetch ffmpeg-core.js. Please check the file in the /static folder.');
+
+                    const wasmCheck = await fetch(wasmURL);
+                    log(`- ffmpeg-core.wasm status: ${wasmCheck.status} ${wasmCheck.statusText}`);
+                    if (!wasmCheck.ok) throw new Error('Failed to fetch ffmpeg-core.wasm. Please check the file in the /static folder.');
+
+                    log('Core files are accessible. Proceeding to load FFmpeg...');
+                } catch (e) {
+                    log(`CRITICAL ERROR: ${e.message}`);
+                    return;
+                }
+
+                await ffmpeg.load({ coreURL, wasmURL });
                 log('FFmpeg loaded successfully.');
             };
 
