@@ -1,21 +1,25 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Download - {{ video.title }}</title>
+    <title>Processing - {{ video.title }}</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        // Required for FFmpeg.wasm to work
+        document.documentElement.setAttribute('crossorigin', 'anonymous');
+    </script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
 </head>
 <body>
     <div class="container">
         <header class="header">
             <a href="/" class="back-link">&larr; Try another URL</a>
-            <h1>Download Ready</h1>
+            <h1>Client-Side Download</h1>
         </header>
 
         <main class="main-content">
@@ -27,20 +31,123 @@
             </div>
 
             <div class="download-section">
-                <p>Your download for the best available quality is ready.</p>
-                <a href="{{ video.download_url }}" download="{{ video.title|replace(' ', '_') }}.{{ video.ext }}" class="download-button" target="_blank" rel="noopener noreferrer">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
-                    Download Now
-                </a>
-                <p class="download-note">
-                    If the download doesn't start, right-click the button and choose "Save Link As...".
-                </p>
+                <p>This video will be downloaded and assembled entirely in your browser.</p>
+                <p>Your computer's resources (CPU/RAM) will be used. This may be slow for long videos.</p>
+                
+                <button id="prepare-download-btn" class="download-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z"></path></svg>
+                    Prepare Download
+                </button>
+
+                <div id="final-download-section" style="display: none;">
+                    <p>Processing complete! Your file is ready.</p>
+                    <a href="#" id="final-download-link" class="download-button" download="{{ video.title|replace(' ', '_') }}.{{ video.ext }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24"><path d="M12 15.586l-4.293-4.293a1 1 0 011.414-1.414L11 12.586V4a1 1 0 112 0v8.586l1.879-1.879a1 1 0 011.414 1.414L12 15.586zM19 20H5a1 1 0 110-2h14a1 1 0 110 2z"/></svg>
+                        Download Now
+                    </a>
+                </div>
+
+                <div id="logs-container" class="logs-container">
+                    <h4>Processing Log:</h4>
+                    <pre id="logs"></pre>
+                </div>
             </div>
         </main>
 
         <footer class="footer">
-            <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a>. Source code on <a href="https://github.com/YOUR_USERNAME/YTDOWNLOADERWEB" target="_blank">GitHub</a>.</p>
+            <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a> and <a href="https://ffmpegwasm.netlify.app/" target="_blank">ffmpeg.wasm</a>.</p>
         </footer>
     </div>
+
+    <script>
+        const manifestUrl = "{{ video.manifest_url|safe }}";
+        const prepareBtn = document.getElementById('prepare-download-btn');
+        const finalDownloadSection = document.getElementById('final-download-section');
+        const finalDownloadLink = document.getElementById('final-download-link');
+        const logsContainer = document.getElementById('logs-container');
+        const logs = document.getElementById('logs');
+
+        let ffmpeg;
+
+        const log = (message) => {
+            console.log(message);
+            logs.textContent += message + '\n';
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        };
+
+        const loadFFmpeg = async () => {
+            log('Loading ffmpeg-core.js...');
+            ffmpeg = new FFmpeg.FFmpeg();
+            ffmpeg.on('log', ({ message }) => {
+                log(`[FFmpeg]: ${message}`);
+            });
+            await ffmpeg.load({
+                coreURL: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js"
+            });
+            log('FFmpeg loaded successfully.');
+        };
+
+        const startProcess = async () => {
+            prepareBtn.disabled = true;
+            prepareBtn.innerHTML = 'Processing... Please wait.';
+            logsContainer.style.display = 'block';
+
+            try {
+                await loadFFmpeg();
+
+                log('Fetching M3U8 manifest...');
+                const response = await fetch(manifestUrl);
+                const manifestText = await response.text();
+                
+                const segmentUrls = manifestText.split('\n').filter(line => line && !line.startsWith('#'));
+                log(`Found ${segmentUrls.length} segments to download.`);
+
+                const inputFileName = 'input.txt';
+                let fileContent = '';
+
+                for (let i = 0; i < segmentUrls.length; i++) {
+                    const segmentUrl = segmentUrls[i];
+                    // M3U8 URLs can be relative, so we need to resolve them
+                    const absoluteSegmentUrl = new URL(segmentUrl, manifestUrl).href;
+                    const segmentFileName = `segment${i}.ts`;
+                    
+                    log(`Downloading segment ${i + 1}/${segmentUrls.length}...`);
+                    const segmentResponse = await fetch(absoluteSegmentUrl);
+                    const segmentData = await segmentResponse.arrayBuffer();
+                    
+                    log(`Writing ${segmentFileName} to virtual filesystem...`);
+                    await ffmpeg.writeFile(segmentFileName, new Uint8Array(segmentData));
+                    fileContent += `file '${segmentFileName}'\n`;
+                }
+
+                await ffmpeg.writeFile(inputFileName, fileContent);
+
+                log('All segments downloaded. Starting merge process with FFmpeg...');
+                log('This may take several minutes and use a lot of CPU/RAM.');
+
+                // FFmpeg command to concatenate the segments without re-encoding
+                await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', inputFileName, '-c', 'copy', 'output.mp4']);
+
+                log('Merge complete. Reading file from virtual filesystem...');
+                const data = await ffmpeg.readFile('output.mp4');
+
+                log('Creating download link...');
+                const blob = new Blob([data.buffer], { type: 'video/mp4' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                finalDownloadLink.href = blobUrl;
+                prepareBtn.style.display = 'none';
+                finalDownloadSection.style.display = 'block';
+                log('Download is ready!');
+
+            } catch (error) {
+                log('An error occurred: ' + error);
+                prepareBtn.innerHTML = 'Failed. Please try again.';
+                prepareBtn.disabled = false;
+            }
+        };
+
+        prepareBtn.addEventListener('click', startProcess);
+    </script>
 </body>
 </html>

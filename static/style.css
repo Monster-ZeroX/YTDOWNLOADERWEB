@@ -311,6 +311,40 @@ input::file-selector-button:hover {
     margin-top: 20px !important;
 }
 
+.download-button:disabled {
+    background-color: var(--secondary-text);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.logs-container {
+    display: none; /* Hidden by default */
+    margin-top: 25px;
+    background-color: #000;
+    color: #0f0;
+    font-family: monospace;
+    font-size: 0.85rem;
+    padding: 15px;
+    border-radius: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+    text-align: left;
+    border: 1px solid var(--border-color);
+}
+
+.logs-container h4 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    font-weight: 500;
+}
+
+.logs-container pre {
+    margin: 0;
+    padding: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
 /* --- Error Message --- */
 .error-message {
     background-color: var(--error-background);

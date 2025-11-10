@@ -1,10 +1,8 @@
-
 import yt_dlp
 from flask import Flask, render_template, request, redirect, session
 import os
 import tempfile
 import secrets
-import re
 
 app = Flask(__name__)
 # In a real production app, this should be loaded from an environment variable
@@ -22,7 +20,7 @@ def index():
 @app.route('/download', methods=['POST'])
 def download():
     """
-    Uses yt-dlp to extract a single, best-quality, direct-downloadable link.
+    Uses yt-dlp to extract the HLS manifest URL (.m3u8) for client-side processing.
     """
     url = request.form['url']
     if not url:
@@ -30,19 +28,16 @@ def download():
 
     cookie_file = request.files.get('cookie_file')
     
-    # Clean up any old cookie file from a previous session
     if 'cookie_file_path' in session and os.path.exists(session['cookie_file_path']):
         os.remove(session['cookie_file_path'])
     session.pop('cookie_file_path', None)
 
     try:
-        # This format string is the key. It tells yt-dlp to find the best format
-        # that has both video and audio, is not a manifest file, and prefers mp4.
-        # It will automatically select the best single file for download.
+        # This format string specifically asks for the HLS manifest
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+            'format': 'bestvideo[protocol=m3u8_native]+bestaudio[protocol=m3u8_native]/best[protocol=m3u8_native]',
         }
 
         if cookie_file and cookie_file.filename:
@@ -51,20 +46,18 @@ def download():
             session['cookie_file_path'] = path
             ydl_opts['cookiefile'] = path
 
-        # We only need to extract the info once. yt-dlp will process the format
-        # selector and provide the direct URL for the chosen format.
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
             video_info = {
                 'title': info.get('title', 'No title'),
                 'thumbnail': info.get('thumbnail', ''),
-                'download_url': info.get('url'), # The single, direct download URL
-                'ext': info.get('ext', 'mp4')
+                'manifest_url': info.get('url'), # The HLS manifest URL
+                'ext': 'mp4' # We will be creating an mp4 file
             }
 
-            if not video_info['download_url']:
-                 return render_template('index.html', error="Could not find a direct downloadable link for this video. It may be a live stream or protected.")
+            if not video_info['manifest_url']:
+                 return render_template('index.html', error="Could not find a suitable HLS stream for this video. It may be a live stream or protected in a way that is not supported.")
 
             return render_template('download.html', video=video_info)
 
