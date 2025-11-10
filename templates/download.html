@@ -59,7 +59,7 @@
         </footer>
     </div>
 
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="{{ url_for('static', filename='ffmpeg.js') }}"></script>
     <script>
         const manifestUrl = "{{ video.manifest_url|safe }}";
         const prepareBtn = document.getElementById('prepare-download-btn');
