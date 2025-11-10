@@ -79,11 +79,18 @@ body {
 /* --- Forms & Buttons --- */
 .url-form {
     display: flex;
-    gap: 10px;
+    flex-direction: column; /* Changed for new rows */
+    gap: 15px; /* Adjusted gap */
     background: var(--card-background);
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.form-main-row {
+    display: flex;
+    gap: 10px;
+    width: 100%;
 }
 
 .url-form input[type="text"] {
@@ -115,6 +122,112 @@ body {
 
 .url-form button:hover {
     background-color: var(--accent-hover);
+}
+
+.form-options-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 10px 5px 5px 5px;
+    flex-wrap: wrap;
+}
+
+.cookie-option, .playlist-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cookie-option label, .playlist-option label {
+    font-size: 0.9rem;
+    color: var(--secondary-text);
+    cursor: pointer;
+}
+
+.cookie-option input[type="file"] {
+    font-size: 0.9rem;
+    color: var(--secondary-text);
+}
+
+/* Simple styling for file input */
+input::file-selector-button {
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    padding: .4em .8em;
+    border-radius: 6px;
+    background-color: var(--background-color);
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+input::file-selector-button:hover {
+    background-color: #e9e9ed;
+}
+
+/* Custom checkbox */
+.playlist-option input[type="checkbox"] {
+    appearance: none;
+    background-color: #fff;
+    margin: 0;
+    font: inherit;
+    color: currentColor;
+    width: 1.15em;
+    height: 1.15em;
+    border: 0.1em solid var(--border-color);
+    border-radius: 0.25em;
+    transform: translateY(-0.075em);
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+}
+
+.playlist-option input[type="checkbox"]::before {
+    content: "";
+    width: 0.65em;
+    height: 0.65em;
+    transform: scale(0);
+    transition: 120ms transform ease-in-out;
+    box-shadow: inset 1em 1em var(--accent-color);
+    transform-origin: bottom left;
+    clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+.playlist-option input[type="checkbox"]:checked::before {
+    transform: scale(1);
+}
+
+/* --- Info Card --- */
+.info-card {
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 25px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.info-card p, .info-card ol {
+    margin: 0;
+    padding: 0;
+}
+
+.info-card p {
+    margin-bottom: 10px;
+}
+
+.info-card ol {
+    padding-left: 20px;
+}
+
+.info-card a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.info-card a:hover {
+    text-decoration: underline;
 }
 
 /* --- Download Page Specifics --- */
@@ -224,4 +337,82 @@ body {
     .url-form {
         flex-direction: column;
     }
+    .form-options-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
+
+/* --- Playlist Specific Styles --- */
+.playlist-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+.playlist-header h2 {
+    font-size: 1.8rem;
+    margin: 0 0 5px 0;
+}
+.playlist-header p {
+    font-size: 1.1rem;
+    color: var(--secondary-text);
+    margin: 0;
+}
+
+.playlist-item {
+    display: flex;
+    text-align: left;
+    gap: 15px;
+    margin-bottom: 15px; /* Replaces gap for parent flex */
+}
+
+.video-thumbnail-small {
+    width: 120px;
+    height: 68px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.video-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.video-title-small {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0 0 10px 0;
+}
+
+.format-list-small ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.format-link-small {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--background-color);
+    padding: 5px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--primary-text);
+    font-size: 0.85rem;
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.format-link-small:hover {
+    background-color: #e9e9ed;
+    border-color: #ccc;
+}
+
+.format-link-small svg {
+    color: var(--secondary-text);
+}
+

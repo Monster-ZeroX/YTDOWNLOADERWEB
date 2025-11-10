@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Downloader</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,14 +15,38 @@
     <div class="container">
         <header class="header">
             <h1>YouTube Downloader</h1>
-            <p>Enter a YouTube video URL to get started.</p>
+            <p>Enter a YouTube video or playlist URL to get started.</p>
         </header>
 
         <main class="main-content">
-            <form action="/download" method="POST" class="url-form">
-                <input type="text" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
-                <button type="submit">Get Video</button>
+            <form action="/download" method="POST" enctype="multipart/form-data" class="url-form">
+                <div class="form-main-row">
+                    <input type="text" name="url" placeholder="https://www.youtube.com/watch?v=..." required>
+                    <button type="submit">Get Video</button>
+                </div>
+                <div class="form-options-row">
+                    <div class="cookie-option">
+                        <label for="cookie_file">Optional: Upload cookies.txt</label>
+                        <input type="file" id="cookie_file" name="cookie_file" accept=".txt">
+                    </div>
+                    <div class="playlist-option">
+                        <input type="checkbox" id="download_playlist" name="download_playlist" value="yes">
+                        <label for="download_playlist">Download full playlist</label>
+                    </div>
+                </div>
             </form>
+
+            <div class="info-card">
+                <p><strong>Getting a "Sign in" or "Confirm you're not a bot" error?</strong></p>
+                <p>YouTube sometimes requires you to be logged in. You can use a cookies file from your browser to fix this.</p>
+                <ol>
+                    <li>Install the <a href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank">Get cookies.txt LOCALLY</a> extension for Chrome.</li>
+                    <li>Go to YouTube and log in.</li>
+                    <li>Click the extension icon and then "Export".</li>
+                    <li>Save the `youtube.com_cookies.txt` file.</li>
+                    <li>Upload that file above before clicking "Get Video".</li>
+                </ol>
+            </div>
 
             {% if error %}
                 <div class="error-message">
