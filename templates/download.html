@@ -56,7 +56,8 @@
 
     <script>
         function init() {
-            const manifestUrl = "{{ video.manifest_url|safe }}";
+            const videoManifestUrl = "{{ video.video_manifest_url|safe }}";
+            const audioManifestUrl = "{{ video.audio_manifest_url|safe }}";
             const prepareBtn = document.getElementById('prepare-download-btn');
             const finalDownloadSection = document.getElementById('final-download-section');
             const finalDownloadLink = document.getElementById('final-download-link');
@@ -94,6 +95,44 @@
                 log('FFmpeg loaded successfully.');
             };
 
+            const fetchAndWriteSegments = async (manifestUrl, streamType, ffmpegInstance) => {
+                log(`Fetching ${streamType} M3U8 manifest via proxy...`);
+                const response = await fetch(`/proxy?url=${encodeURIComponent(manifestUrl)}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch ${streamType} manifest via proxy: ${response.status} ${response.statusText}`);
+                }
+                const manifestText = await response.text();
+                
+                const segmentUrls = manifestText.split('\n').filter(line => line && !line.startsWith('#') && line.trim().endsWith('.ts'));
+                if (segmentUrls.length === 0) {
+                    log(`Error: No .ts segments found in the ${streamType} manifest. This format may not be a standard HLS playlist.`);
+                    throw new Error(`No .ts segments found in ${streamType} manifest.`);
+                }
+                log(`Found ${segmentUrls.length} ${streamType} segments to download.`);
+
+                const inputFileName = `input_${streamType}.txt`;
+                let fileContent = '';
+
+                for (let i = 0; i < segmentUrls.length; i++) {
+                    const segmentUrl = segmentUrls[i];
+                    const absoluteSegmentUrl = new URL(segmentUrl, manifestUrl).href;
+                    const segmentFileName = `segment_${streamType}_${i}.ts`;
+                    
+                    log(`Downloading ${streamType} segment ${i + 1}/${segmentUrls.length} via proxy...`);
+                    const segmentResponse = await fetch(`/proxy?url=${encodeURIComponent(absoluteSegmentUrl)}`);
+                    if (!segmentResponse.ok) {
+                        throw new Error(`Failed to fetch ${streamType} segment ${i+1} via proxy: ${segmentResponse.status} ${segmentResponse.statusText}`);
+                    }
+                    const segmentData = await segmentResponse.arrayBuffer();
+                    
+                    await ffmpegInstance.writeFile(segmentFileName, new Uint8Array(segmentData));
+                    fileContent += `file '${segmentFileName}'\n`;
+                }
+
+                await ffmpegInstance.writeFile(inputFileName, fileContent);
+                return inputFileName;
+            };
+
             const startProcess = async () => {
                 log('`startProcess` function initiated by click.');
                 prepareBtn.disabled = true;
@@ -104,45 +143,14 @@
                     log('Attempting to call `loadFFmpeg`...');
                     await loadFFmpeg();
 
-                    log('Fetching M3U8 manifest via proxy...');
-                    const response = await fetch(`/proxy?url=${encodeURIComponent(manifestUrl)}`);
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch manifest via proxy: ${response.status} ${response.statusText}`);
-                    }
-                    const manifestText = await response.text();
-                    
-                    const segmentUrls = manifestText.split('\n').filter(line => line && !line.startsWith('#') && line.trim().endsWith('.ts'));
-                    if (segmentUrls.length === 0) {
-                        log('Error: No .ts segments found in the manifest. This format may not be a standard HLS playlist.');
-                        throw new Error('No .ts segments found in manifest.');
-                    }
-                    log(`Found ${segmentUrls.length} segments to download.`);
-
-                    const inputFileName = 'input.txt';
-                    let fileContent = '';
-
-                    for (let i = 0; i < segmentUrls.length; i++) {
-                        const segmentUrl = segmentUrls[i];
-                        const absoluteSegmentUrl = new URL(segmentUrl, manifestUrl).href;
-                        const segmentFileName = `segment${i}.ts`;
-                        
-                        log(`Downloading segment ${i + 1}/${segmentUrls.length} via proxy...`);
-                        const segmentResponse = await fetch(`/proxy?url=${encodeURIComponent(absoluteSegmentUrl)}`);
-                        if (!segmentResponse.ok) {
-                            throw new Error(`Failed to fetch segment ${i+1} via proxy: ${segmentResponse.status} ${segmentResponse.statusText}`);
-                        }
-                        const segmentData = await segmentResponse.arrayBuffer();
-                        
-                        await ffmpeg.writeFile(segmentFileName, new Uint8Array(segmentData));
-                        fileContent += `file '${segmentFileName}'\n`;
-                    }
-
-                    await ffmpeg.writeFile(inputFileName, fileContent);
+                    const videoInputFile = await fetchAndWriteSegments(videoManifestUrl, 'video', ffmpeg);
+                    const audioInputFile = await fetchAndWriteSegments(audioManifestUrl, 'audio', ffmpeg);
 
                     log('All segments downloaded. Starting merge process with FFmpeg...');
                     log('This may take several minutes and use a lot of CPU/RAM.');
 
-                    await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', inputFileName, '-c', 'copy', 'output.mp4']);
+                    // FFmpeg command to merge video and audio streams without re-encoding
+                    await ffmpeg.exec(['-i', videoInputFile, '-i', audioInputFile, '-c', 'copy', 'output.mp4']);
 
                     log('Merge complete. Reading file from virtual filesystem...');
                     const data = await ffmpeg.readFile('output.mp4');

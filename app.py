@@ -1,3 +1,4 @@
+
 import yt_dlp
 from flask import Flask, render_template, request, redirect, session, Response
 import os
@@ -8,95 +9,127 @@ import requests
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
+def cleanup_session_cookie():
+    """Removes any temporary cookie file stored in the session."""
+    if 'cookie_file_path' in session:
+        cookie_path = session.pop('cookie_file_path', None)
+        if cookie_path and os.path.exists(cookie_path):
+            try:
+                os.remove(cookie_path)
+            except OSError as e:
+                app.logger.error(f"Error removing cookie file {cookie_path}: {e}")
+
 @app.route('/')
 def index():
-    """Renders the main page and clears any old session data."""
-    if 'cookie_file_path' in session:
-        if os.path.exists(session['cookie_file_path']):
-            os.remove(session['cookie_file_path'])
-        session.pop('cookie_file_path', None)
+    """Renders the main page."""
+    cleanup_session_cookie()
     return render_template('index.html')
 
-@app.route('/download', methods=['POST'])
-def download():
+@app.route('/select', methods=['POST'])
+def select_formats():
     """
-    Uses yt-dlp to extract the HLS manifest URL (.m3u8) for client-side processing.
+    Fetches all available formats for a URL and presents them to the user
+    on a selection page.
     """
     url = request.form['url']
     if not url:
         return redirect('/')
 
     cookie_file = request.files.get('cookie_file')
-    
-    if 'cookie_file_path' in session and os.path.exists(session['cookie_file_path']):
-        os.remove(session['cookie_file_path'])
-    session.pop('cookie_file_path', None)
+    cleanup_session_cookie()
+
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+    }
+
+    if cookie_file and cookie_file.filename:
+        fd, path = tempfile.mkstemp(suffix='.txt')
+        cookie_file.save(path)
+        session['cookie_file_path'] = path
+        ydl_opts['cookiefile'] = path
 
     try:
-        # This format string specifically asks for the HLS manifest
-        ydl_opts = {
-            'quiet': True,
-            'no_warnings': True,
-            'format': 'bestvideo[protocol=m3u8_native]+bestaudio[protocol=m3u8_native]/best[protocol=m3u8_native]',
-        }
-
-        if cookie_file and cookie_file.filename:
-            fd, path = tempfile.mkstemp(suffix='.txt')
-            cookie_file.save(path)
-            session['cookie_file_path'] = path
-            ydl_opts['cookiefile'] = path
-
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            
-            video_info = {
-                'title': info.get('title', 'No title'),
-                'thumbnail': info.get('thumbnail', ''),
-                'manifest_url': info.get('url'), # The HLS manifest URL
-                'ext': 'mp4'
-            }
 
-            if not video_info['manifest_url']:
-                 return render_template('index.html', error="Could not find a suitable HLS stream for this video. It may be a live stream or protected in a way that is not supported.")
+        video_formats = []
+        audio_formats = []
 
-            return render_template('download.html', video=video_info)
+        for f in info.get('formats', []):
+            # We only want formats that provide an HLS manifest
+            if f.get('protocol') == 'm3u8_native':
+                # Video-only formats
+                if f.get('vcodec') != 'none' and f.get('acodec') == 'none':
+                    video_formats.append({
+                        'format_id': f.get('format_id'),
+                        'ext': f.get('ext'),
+                        'resolution': f.get('resolution'),
+                        'fps': f.get('fps'),
+                        'url': f.get('url'),
+                        'note': f.get('format_note', 'Video')
+                    })
+                # Audio-only formats
+                elif f.get('acodec') != 'none' and f.get('vcodec') == 'none':
+                    audio_formats.append({
+                        'format_id': f.get('format_id'),
+                        'ext': f.get('ext'),
+                        'abr': f.get('abr'),
+                        'url': f.get('url'),
+                        'note': f.get('format_note', 'Audio')
+                    })
+        
+        # Sort by quality (resolution for video, bitrate for audio)
+        video_formats.sort(key=lambda v: v.get('resolution', '0x0').split('x')[1], reverse=True)
+        audio_formats.sort(key=lambda a: a.get('abr', 0), reverse=True)
 
-    except yt_dlp.utils.DownloadError as e:
-        error_str = str(e)
-        if 'Sign in to confirm' in error_str or 'nsig extraction' in error_str:
-            error_message = "This video is protected. Please try again using the 'Upload cookies.txt' option."
-        else:
-            error_message = f"Could not process URL. Please check if it's correct. Error: {error_str}"
-        return render_template('index.html', error=error_message)
+        if not video_formats or not audio_formats:
+            return render_template('index.html', error="Could not find separate video and audio streams for quality selection. The video might be in an unsupported format.")
+
+        return render_template('select_quality.html', 
+                               video_formats=video_formats, 
+                               audio_formats=audio_formats,
+                               title=info.get('title', 'Unknown Title'),
+                               thumbnail=info.get('thumbnail', ''))
+
     except Exception as e:
-        return render_template('index.html', error=f"An unexpected error occurred: {e}")
-    finally:
-        # Clean up cookie file after the request is done
-        if 'cookie_file_path' in session:
-            cookie_path = session.pop('cookie_file_path', None)
-            if cookie_path and os.path.exists(cookie_path):
-                os.remove(cookie_path)
+        return render_template('index.html', error=f"An error occurred: {e}")
+
+@app.route('/process', methods=['POST'])
+def process_download():
+    """
+    Receives the selected format URLs and passes them to the download page.
+    """
+    video_url = request.form.get('video_url')
+    audio_url = request.form.get('audio_url')
+    title = request.form.get('title')
+
+    if not video_url or not audio_url:
+        return render_template('index.html', error="You must select both a video and an audio quality.")
+
+    video_info = {
+        'title': title,
+        'video_manifest_url': video_url,
+        'audio_manifest_url': audio_url,
+        'ext': 'mp4'
+    }
+    return render_template('download.html', video=video_info)
+
 
 @app.route('/proxy')
 def proxy():
     """
-    A proxy to fetch cross-origin resources (manifests, segments)
-    to bypass browser CORS restrictions.
+    A proxy to fetch cross-origin resources to bypass browser CORS restrictions.
     """
     url = request.args.get('url')
     if not url:
         return "No URL provided", 400
 
     try:
-        # It's important to stream the response to handle large files (video segments)
-        # without loading them all into memory at once.
         req = requests.get(url, stream=True)
-        
-        # Pass through the content and headers from the original source
         return Response(req.iter_content(chunk_size=1024), content_type=req.headers['content-type'])
     except Exception as e:
         return f"Failed to proxy request: {e}", 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)

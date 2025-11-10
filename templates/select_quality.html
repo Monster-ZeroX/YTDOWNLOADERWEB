@@ -1,0 +1,63 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Quality - {{ title }}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <a href="/" class="back-link">&larr; Try another URL</a>
+            <h1>Select Quality</h1>
+        </header>
+
+        <main class="main-content">
+            <div class="video-info-card">
+                {% if thumbnail %}
+                    <img src="{{ thumbnail }}" alt="Video Thumbnail" class="video-thumbnail">
+                {% endif %}
+                <h2 class="video-title">{{ title }}</h2>
+            </div>
+
+            <form action="/process" method="POST" class="quality-selection-form">
+                <input type="hidden" name="title" value="{{ title }}">
+
+                <div class="quality-group">
+                    <h3>Video Quality</h3>
+                    <div class="radio-toolbar">
+                        {% for format in video_formats %}
+                        <input type="radio" id="video-{{ loop.index }}" name="video_url" value="{{ format.url }}" {% if loop.first %}checked{% endif %}>
+                        <label for="video-{{ loop.index }}">{{ format.resolution }} ({{ format.note }})</label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="quality-group">
+                    <h3>Audio Quality</h3>
+                    <div class="radio-toolbar">
+                        {% for format in audio_formats %}
+                        <input type="radio" id="audio-{{ loop.index }}" name="audio_url" value="{{ format.url }}" {% if loop.first %}checked{% endif %}>
+                        <label for="audio-{{ loop.index }}">{{ format.abr }}kbps ({{ format.note }})</label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <button type="submit" class="download-button">
+                    Prepare Download
+                </button>
+            </form>
+        </main>
+
+        <footer class="footer">
+            <p>Powered by <a href="https://github.com/yt-dlp/yt-dlp" target="_blank">yt-dlp</a>.</p>
+        </footer>
+    </div>
+</body>
+</html>
