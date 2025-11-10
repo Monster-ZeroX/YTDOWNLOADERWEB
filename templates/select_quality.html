@@ -34,7 +34,7 @@
                     <div class="radio-toolbar">
                         {% for format in video_formats %}
                         <input type="radio" id="video-{{ loop.index }}" name="video_url" value="{{ format.url }}" {% if loop.first %}checked{% endif %}>
-                        <label for="video-{{ loop.index }}">{{ format.resolution }} ({{ format.note }})</label>
+                        <label for="video-{{ loop.index }}">{{ format.display_resolution }} ({{ format.note }})</label>
                         {% endfor %}
                     </div>
                 </div>

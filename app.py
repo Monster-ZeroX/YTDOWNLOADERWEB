@@ -63,10 +63,19 @@ def select_formats():
             # Filter for combined video+audio streams that are adaptive (HLS/DASH)
             if f.get('protocol') in ['m3u8_native', 'https', 'http'] and \
                f.get('vcodec') != 'none' and f.get('acodec') != 'none':
+                resolution_str = f.get('resolution', '0x0')
+                height = 0
+                if 'x' in resolution_str:
+                    try:
+                        height = int(resolution_str.split('x')[1])
+                    except ValueError:
+                        pass # Keep height as 0 if conversion fails
+                
                 video_formats.append({
                     'format_id': f.get('format_id'),
                     'ext': f.get('ext'),
-                    'resolution': f.get('resolution'),
+                    'resolution': resolution_str,
+                    'display_resolution': f"{height}P" if height > 0 else resolution_str,
                     'fps': f.get('fps'),
                     'url': f.get('url'),
                     'note': f.get('format_note', 'Combined')
