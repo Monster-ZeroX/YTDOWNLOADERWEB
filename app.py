@@ -53,10 +53,13 @@ def select_formats():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
+        app.logger.debug(f"yt-dlp info['formats']: {info.get('formats', [])}") # Debug log
+
         video_formats = []
         audio_formats = []
 
         for f in info.get('formats', []):
+            app.logger.debug(f"  Format: id={f.get('format_id')}, protocol={f.get('protocol')}, vcodec={f.get('vcodec')}, acodec={f.get('acodec')}, ext={f.get('ext')}, url={f.get('url')}") # Debug log
             # Prioritize HLS and DASH protocols for adaptive streams
             if f.get('protocol') in ['m3u8_native', 'https', 'http']:
                 # Video-only formats
